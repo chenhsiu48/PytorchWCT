@@ -12,28 +12,85 @@ import torch.nn as nn
 from torch.autograd import Variable
 import numpy as np
 
+
 def is_image_file(filename):
     return any(filename.endswith(extension) for extension in [".png", ".jpg", ".jpeg"])
+
 
 def default_loader(path):
     return Image.open(path).convert('RGB')
 
+
+def gray_loader(path):
+    return Image.open(path).convert('L').convert('RGB')
+
+
+class DatasetOne(data.Dataset):
+    def __init__(self, contentPath, stylePath, fineSize=0, loader=default_loader):
+        super(DatasetOne, self).__init__()
+        self.contentPath = contentPath
+        self.stylePath = stylePath
+        self.image_list = [f'{os.path.basename(contentPath).split(".")[0]}-{os.path.basename(stylePath).split(".")[0]}.png']
+        self.fineSize = fineSize
+        self.loader = loader
+
+    def __getitem__(self, index):
+        contentImg = self.loader(self.contentPath)
+        styleImg = self.loader(self.stylePath)
+
+        contentImg = transforms.Compose([RescaleNew(self.fineSize), CropModulus(16), transforms.ToTensor()])(contentImg)
+        styleImg = transforms.Compose([RescaleNew((contentImg.shape[1], contentImg.shape[2])), transforms.ToTensor()])(styleImg)
+        return contentImg, styleImg, self.image_list[index]
+
+    def __len__(self):
+        return len(self.image_list)
+
+
+class RescaleNew(object):
+    def __init__(self, target_size, scaling='bigger_side', interpolation=Image.BILINEAR):
+        self.interpolation = interpolation
+        self.scaling = scaling
+        self.target_size = target_size
+
+    def target_shape(self, H, W):
+        if (self.scaling == 'bigger_side' and H > W) or (self.scaling == 'smaller_side' and H < W):
+            Wnew = int(np.round(W / H * self.target_size))
+            Hnew = self.target_size
+        else:
+            Wnew = self.target_size
+            Hnew = int(np.round(H / W * self.target_size))
+        return Hnew, Wnew
+
+    def __call__(self, image):
+        W, H = image.size
+        if self.target_size == 0:
+            Hnew, Wnew = H, W
+        elif len(self.target_size) == 2:
+            Hnew, Wnew = self.target_size
+        else:
+            Hnew, Wnew = self.target_shape(H, W)
+
+        assert min(Hnew, Wnew) >= 224, f'invalid target_size {Hnew, Wnew}'
+
+        return image.resize((Wnew, Hnew), resample=self.interpolation)
+
+
 class Dataset(data.Dataset):
-    def __init__(self,contentPath,stylePath,fineSize):
-        super(Dataset,self).__init__()
+    def __init__(self, contentPath, stylePath, fineSize):
+        super(Dataset, self).__init__()
         self.contentPath = contentPath
         self.image_list = [x for x in listdir(contentPath) if is_image_file(x)]
         self.stylePath = stylePath
         self.fineSize = fineSize
         self.prep = transforms.Compose([
-                    Rescale(fineSize, mode='PIL'),
-                    CropModulus(16),
-                    transforms.ToTensor(),
-                    ])
+            Rescale(fineSize, mode='PIL'),
+            CropModulus(16),
+            transforms.ToTensor(),
+        ])
 
-    def __getitem__(self,index):
-        contentImgPath = os.path.join(self.contentPath,self.image_list[index])
-        styleImgPath = os.path.join(self.stylePath,self.image_list[index])
+    def __getitem__(self, index):
+        contentImgPath = os.path.join(self.contentPath, self.image_list[index])
+        styleImgPath = os.path.join(self.stylePath, self.image_list[index])
         contentImg = default_loader(contentImgPath)
         styleImg = default_loader(styleImgPath)
 
@@ -48,31 +105,31 @@ class Dataset(data.Dataset):
 
 class CropModulus(object):
 
-  def __init__(self, crop_modulus, mode='PIL'):
-    assert mode in ['PIL', 'HWC', 'CHW']
-    self.mode = mode
-    self.crop_modulus = crop_modulus
+    def __init__(self, crop_modulus, mode='PIL'):
+        assert mode in ['PIL', 'HWC', 'CHW']
+        self.mode = mode
+        self.crop_modulus = crop_modulus
 
-  def __call__(self, im):
-    if self.mode == 'PIL':
-      W, H = im.size
-    elif self.mode == 'HWC':
-      H, W = im.shape[:2]
-    elif self.mode == 'HWC':
-      H, W = im.shape[1:3]
-    Hmod = H - H % self.crop_modulus
-    Wmod = W - W % self.crop_modulus
-    border_x = (W - Wmod) // 2
-    border_y = (H - Hmod) // 2
-    end_x = border_x + Wmod
-    end_y = border_y + Hmod
-    crop_box = (border_x, border_y, end_x, end_y)
-    if self.mode == 'PIL':
-      return im.crop(crop_box)
-    elif self.mode == 'HWC':
-      return im[border_y:end_y, border_x:end_x, :]
-    else: # self.mode == 'HWC':
-      return im[: border_y:end_y, border_x:end_x]
+    def __call__(self, im):
+        if self.mode == 'PIL':
+            W, H = im.size
+        elif self.mode == 'HWC':
+            H, W = im.shape[:2]
+        elif self.mode == 'HWC':
+            H, W = im.shape[1:3]
+        Hmod = H - H % self.crop_modulus
+        Wmod = W - W % self.crop_modulus
+        border_x = (W - Wmod) // 2
+        border_y = (H - Hmod) // 2
+        end_x = border_x + Wmod
+        end_y = border_y + Hmod
+        crop_box = (border_x, border_y, end_x, end_y)
+        if self.mode == 'PIL':
+            return im.crop(crop_box)
+        elif self.mode == 'HWC':
+            return im[border_y:end_y, border_x:end_x, :]
+        else:  # self.mode == 'HWC':
+            return im[: border_y:end_y, border_x:end_x]
 
 
 class Rescale(object):
@@ -91,60 +148,58 @@ class Rescale(object):
 
     def __init__(self,
                  target_size,
-                 max_size=2048, 
+                 max_size=2048,
                  min_size=224,
                  scaling='smaller_side',
                  mode='numpy',
                  interpolation=Image.BILINEAR
                  ):
-      assert mode in ['PIL', 'numpy', 'torch'], mode
-      self.mode = mode
-      self.interpolation = interpolation
-      assert target_size >= 0, f'invalid target_size {target_size}'
-      assert scaling in ['smaller_side', 'bigger_side']
-      self.scaling = scaling
-      assert min_size <= target_size, f'min_size = {min_size} <= target_size = {target_size}. Baaaad idea!'
-      assert max_size <= 0 or target_size <= max_size, (target_size, max_size)
-      self.min_size = min_size
-      self.target_size = target_size
-      self.max_size = max_size
+        assert mode in ['PIL', 'numpy', 'torch'], mode
+        self.mode = mode
+        self.interpolation = interpolation
+        assert target_size >= 0, f'invalid target_size {target_size}'
+        assert scaling in ['smaller_side', 'bigger_side']
+        self.scaling = scaling
+        assert min_size <= target_size, f'min_size = {min_size} <= target_size = {target_size}. Baaaad idea!'
+        assert max_size <= 0 or target_size <= max_size, (target_size, max_size)
+        self.min_size = min_size
+        self.target_size = target_size
+        self.max_size = max_size
 
     def target_shape(self, H, W, scaling=None):
-      scaling = scaling or self.scaling
-      if (scaling == 'bigger_side' and H > W) or (scaling == 'smaller_side' and H < W):
-        Wnew = int(np.round(W/H * self.target_size))
-        Hnew = self.target_size
-      else:
-        Wnew = self.target_size
-        Hnew = int(np.round(H/W * self.target_size))
-      return Hnew, Wnew
+        scaling = scaling or self.scaling
+        if (scaling == 'bigger_side' and H > W) or (scaling == 'smaller_side' and H < W):
+            Wnew = int(np.round(W / H * self.target_size))
+            Hnew = self.target_size
+        else:
+            Wnew = self.target_size
+            Hnew = int(np.round(H / W * self.target_size))
+        return Hnew, Wnew
 
     def __call__(self, image):
-      if self.mode == 'numpy':
-        H, W = image.shape[:2]
-      elif self.mode == 'torch':
-        H, W = image.shape[1:3]
-      else:  #self.mode == 'PIL':
-        W, H = image.size
-      scaling = self.scaling
-      target_size = self.target_size
+        if self.mode == 'numpy':
+            H, W = image.shape[:2]
+        elif self.mode == 'torch':
+            H, W = image.shape[1:3]
+        else:  # self.mode == 'PIL':
+            W, H = image.size
+        scaling = self.scaling
+        target_size = self.target_size
 
-      Hnew, Wnew = self.target_shape(H, W)
+        Hnew, Wnew = self.target_shape(H, W)
 
-      if Wnew < self.min_size or Hnew < self.min_size:
-        # this can only happen with scaling=='bigger_side'
-        # print(f'WARNING: image is too small after scaling. scaling UP instead of down.')
-        Hnew, Wnew = self.target_shape(H, W, 'smaller_side')
+        if Wnew < self.min_size or Hnew < self.min_size:
+            # this can only happen with scaling=='bigger_side'
+            # print(f'WARNING: image is too small after scaling. scaling UP instead of down.')
+            Hnew, Wnew = self.target_shape(H, W, 'smaller_side')
 
-      if self.mode == 'numpy':
-        return skimage.transform.resize(image, (Hnew, Wnew), preserve_range=True)
-      elif self.mode == 'torch':
-        # apparently, there is no simple way to resize a tensor 0_o
-        image = tvt.functional.to_pil_image(image, mode='RGB')
-        image = image.resize((Wnew, Hnew), resample=self.interpolation)
-        image = tvt.functional.to_tensor(image)
-        return image
-      else:  # self.mode in ['PIL', 'torch']:
-        return image.resize((Wnew, Hnew), resample=self.interpolation)
-
-
+        if self.mode == 'numpy':
+            return skimage.transform.resize(image, (Hnew, Wnew), preserve_range=True)
+        elif self.mode == 'torch':
+            # apparently, there is no simple way to resize a tensor 0_o
+            image = tvt.functional.to_pil_image(image, mode='RGB')
+            image = image.resize((Wnew, Hnew), resample=self.interpolation)
+            image = tvt.functional.to_tensor(image)
+            return image
+        else:  # self.mode in ['PIL', 'torch']:
+            return image.resize((Wnew, Hnew), resample=self.interpolation)

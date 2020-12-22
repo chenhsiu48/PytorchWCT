@@ -4,6 +4,7 @@ models_pytorch.zip
 
 # python artifacts
 __pycache__
+.idea
 *.pyc
 
 # Temporary Files

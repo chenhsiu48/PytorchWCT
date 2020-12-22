@@ -12,6 +12,51 @@ from util import *
 import scipy.misc
 import time
 
+
+def join_path(*dirs):
+    if len(dirs) == 0:
+        return ''
+    path = dirs[0]
+    for d in dirs[1:]:
+        path = os.path.join(path, d)
+    return path
+
+
+def make_filepath(fpath, dir_name=None, ext_name=None, tag=None):
+    if dir_name is None:
+        dir_name = os.path.dirname(fpath)
+        if dir_name == '':
+            dir_name = '.'
+    fname = os.path.basename(fpath)
+    base, ext = os.path.splitext(fname)
+    if ext_name is None:
+        ext_name = ext
+    elif ext_name != '' and ext_name[0] != '.':
+        ext_name = '.' + ext_name
+    name = base
+    if tag == '':
+        name = name.split('-')[0]
+    elif tag is not None:
+        name = '%s-%s' % (name, tag)
+    if ext_name != '':
+        name = '%s%s' % (name, ext_name)
+    return join_path(dir_name, name)
+
+
+def match_color(args):
+    from skimage.io import imread, imsave
+    from skimage.exposure import match_histograms
+
+    reference = imread(args.content)
+    image = imread(args.style)
+
+    matched = match_histograms(image, reference, multichannel=True)
+    hm_name = make_filepath(args.style, tag='hm')
+    print(f'match color to {hm_name}')
+    imsave(hm_name, matched)
+    args.style = hm_name
+
+
 parser = argparse.ArgumentParser(description='WCT Pytorch')
 parser.add_argument('--contentPath', default='images/content', help='path to train')
 parser.add_argument('--stylePath', default='images/style', help='path to train')
@@ -26,6 +71,7 @@ parser.add_argument('--decoder2', default='models/vgg19_normalized_decoder2.pth.
 parser.add_argument('--decoder1', default='models/vgg19_normalized_decoder1.pth.tar', help='Path to the decoder1')
 parser.add_argument('--cuda', default=True, help='enables cuda')
 parser.add_argument('--gray', default=False, action='store_const', const=True, help='')
+parser.add_argument('--match', default=False, action='store_const', const=True, help='')
 parser.add_argument('--transform-method', choices=['original', 'closed-form'], default='original',
                     help=('How to whiten and color the features. "original" for the formulation of Li et al. ( https://arxiv.org/abs/1705.08086 )  '
                           'or "closed-form" for method of Lu et al. ( https://arxiv.org/abs/1906.00668 '))
@@ -44,6 +90,9 @@ try:
     os.makedirs(args.outf)
 except OSError:
     pass
+
+if args.match:
+    match_color(args)
 
 # Data loading code
 if args.gray:
@@ -92,7 +141,7 @@ def main():
             contentImg = contentImg.cuda(args.gpu)
             styleImg = styleImg.cuda(args.gpu)
         imname = imname[0]
-        print('\nTransferring ' + imname)
+        print(f'Transferring {imname}')
         if (args.cuda):
             contentImg = contentImg.cuda(args.gpu)
             styleImg = styleImg.cuda(args.gpu)

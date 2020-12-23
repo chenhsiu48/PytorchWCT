@@ -95,13 +95,16 @@ if __name__ == '__main__':
 
     dip.ensure_dir(args.outf)
 
+    if args.effect is not None and args.effect not in dip.handler.keys():
+        print(f'effect {args.effect} not supported')
+        exit(1)
+
     if args.content is None:
         print(f'missing --content')
+    elif args.style is not None:
+        dip.handler[args.effect](args)
+        exec_transfer(args)
     elif args.effect is not None:
-        if args.effect not in dip.handler.keys():
-            print(f'effect {args.effect} not supported')
-            exit(1)
-
         styles = glob.glob(dip.join_path(args.stylePath, f'{args.effect}*.jpg'))
         for s in styles:
             org_content = args.content
@@ -109,8 +112,5 @@ if __name__ == '__main__':
             dip.handler[args.effect](args)
             exec_transfer(args)
             args.content = org_content
-
     elif args.style is None:
         print(f'missing --style')
-    else:
-        exec_transfer(args)

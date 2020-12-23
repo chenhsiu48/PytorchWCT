@@ -38,41 +38,51 @@ def ensure_dir(path):
 
 
 def pre_pencil(args):
-    pre_name = make_filepath(args.content, tag='pre', ext_name='png')
+    pre_name = make_filepath(args.content, tag='pre_pencil', ext_name='png')
+    print(f'preprocess pencil {pre_name}')
     im = Image.open(args.content).convert('L').convert('RGB')
     im.save(pre_name)
     args.content = pre_name
-    print(f'preprocess pencil {pre_name}')
+
+    pre_name = make_filepath(args.style, tag='edit', ext_name='png')
+    match_color(pre_name, args.content, args.style)
+    args.style = pre_name
 
 
 def pre_ink(args):
-    pre_name = make_filepath(args.content, tag='pre', ext_name='png')
+    pre_name = make_filepath(args.content, tag='pre_ink', ext_name='png')
+    print(f'preprocess ink {pre_name}')
     im = Image.open(args.content).convert('L').convert('RGB')
     im.save(pre_name)
     args.content = pre_name
-    print(f'preprocess ink {pre_name}')
+
+    pre_name = make_filepath(args.content, ext_name='png')
+    match_color(pre_name, args.style, args.content)
+    args.content = pre_name
 
 
-def match_color(args):
+def match_color(pre_name, ref_img, target_img):
     from skimage.io import imread, imsave
     from skimage.exposure import match_histograms
 
-    reference = imread(args.content)
-    image = imread(args.style)
+    reference = imread(ref_img)
+    image = imread(target_img)
 
     matched = match_histograms(image, reference, multichannel=True)
-    hm_name = make_filepath(args.style, tag='hm', ext_name='png')
-    print(f'match color to {hm_name}')
-    imsave(hm_name, matched)
-    args.style = hm_name
+    print(f'match color to {pre_name}')
+    imsave(pre_name, matched)
 
 
 def oil_handler(args):
-    match_color(args)
+    pre_name = make_filepath(args.style, tag='edit', ext_name='png')
+    match_color(pre_name, args.content, args.style)
+    args.style = pre_name
 
 
 def water_handler(args):
-    match_color(args)
+    pre_name = make_filepath(args.style, tag='edit', ext_name='png')
+    match_color(pre_name, args.content, args.style)
+    args.style = pre_name
 
 
 def pencil_handler(args):

@@ -1,5 +1,8 @@
 import os
 from PIL import Image
+import cv2
+import numpy as np
+from scipy.ndimage import gaussian_filter
 
 
 def join_path(*dirs):
@@ -40,7 +43,24 @@ def ensure_dir(path):
 def pre_pencil(args):
     pre_name = make_filepath(args.content, tag='pre_pencil', ext_name='png')
     print(f'preprocess pencil {pre_name}')
-    im = Image.open(args.content).convert('L').convert('RGB')
+    im = Image.open(args.content).convert('L')
+
+    image = np.array(im)
+    # initialize OpenCV's static saliency spectral residual detector and compute the saliency map
+    saliency = cv2.saliency.StaticSaliencySpectralResidual_create()
+    (success, sal_map) = saliency.computeSaliency(image)
+
+    sal_map = gaussian_filter(sal_map, sigma=im.width / 8 / 2)
+    edges = cv2.Canny(image, 84, 128)
+    edges = gaussian_filter(edges, sigma=2)
+
+    sal_map /= np.max(sal_map)
+    image = image + image * (1 - sal_map) - edges
+    image = np.clip(image, 0, 255)
+
+    im = Image.fromarray(image)
+    im = im.convert('RGB')
+
     im.save(pre_name)
     args.content = pre_name
 
@@ -52,13 +72,30 @@ def pre_pencil(args):
 def pre_ink(args):
     pre_name = make_filepath(args.content, tag='pre_ink', ext_name='png')
     print(f'preprocess ink {pre_name}')
-    im = Image.open(args.content).convert('L').convert('RGB')
+    im = Image.open(args.content).convert('L')
+
+    image = np.array(im)
+    edges = cv2.Canny(image, 64, 128)
+    edges = gaussian_filter(edges, sigma=2)
+
+    # initialize OpenCV's static saliency spectral residual detector and compute the saliency map
+    saliency = cv2.saliency.StaticSaliencySpectralResidual_create()
+    (success, sal_map) = saliency.computeSaliency(image)
+
+    sal_map = gaussian_filter(sal_map, sigma=im.width / 16 / 2)
+    sal_map /= np.max(sal_map)
+    image = image + image * (1 - sal_map) - edges
+    image = np.clip(image, 0, 255)
+
+    im = Image.fromarray(image)
+    im = im.convert('RGB')
+
     im.save(pre_name)
     args.content = pre_name
 
-    pre_name = make_filepath(args.content, ext_name='png')
-    match_color(pre_name, args.style, args.content)
-    args.content = pre_name
+    #pre_name = make_filepath(args.content, ext_name='png')
+    #match_color(pre_name, args.style, args.content)
+    #args.content = pre_name
 
 
 def match_color(pre_name, ref_img, target_img):

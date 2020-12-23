@@ -1,15 +1,9 @@
 from PIL import Image
 import skimage.transform
 import torchvision.transforms as transforms
-import torchvision.utils as vutils
 import torch.utils.data as data
 from os import listdir
-from os.path import join
-import numpy as np
-import torch
 import os
-import torch.nn as nn
-from torch.autograd import Variable
 import numpy as np
 
 
@@ -21,22 +15,17 @@ def default_loader(path):
     return Image.open(path).convert('RGB')
 
 
-def gray_loader(path):
-    return Image.open(path).convert('L').convert('RGB')
-
-
 class DatasetOne(data.Dataset):
-    def __init__(self, contentPath, stylePath, fineSize=0, loader=default_loader):
+    def __init__(self, contentPath, stylePath, fineSize=0):
         super(DatasetOne, self).__init__()
         self.contentPath = contentPath
         self.stylePath = stylePath
         self.image_list = [f'{os.path.basename(contentPath).split(".")[0]}-{os.path.basename(stylePath).split(".")[0]}.png']
         self.fineSize = fineSize
-        self.loader = loader
 
     def __getitem__(self, index):
-        contentImg = self.loader(self.contentPath)
-        styleImg = self.loader(self.stylePath)
+        contentImg = default_loader(self.contentPath)
+        styleImg = default_loader(self.stylePath)
 
         contentImg = transforms.Compose([RescaleNew(self.fineSize), CropModulus(16), transforms.ToTensor()])(contentImg)
         styleImg = transforms.Compose([RescaleNew((contentImg.shape[1], contentImg.shape[2])), transforms.ToTensor()])(styleImg)

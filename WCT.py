@@ -151,7 +151,7 @@ def main():
         styleTransfer(wct, targets, contentImg, styleImg, imname,
                       args.gamma, args.delta, args.outf, args.transform_method)
         end_time = time.time()
-        print(' Elapsed time is: %f' % (end_time - start_time))
+        print('Elapsed time is: %f' % (end_time - start_time))
         avgTime += (end_time - start_time)
 
     print('Processed %d images. Averaged time is %f' % ((i + 1), avgTime / (i + 1)))

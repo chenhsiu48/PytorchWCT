@@ -69,31 +69,9 @@ def pre_pencil(args):
 
 
 def pre_ink(args):
-    pre_name = make_filepath(args.content, tag='pre_ink', ext_name='png')
-    print(f'preprocess ink {pre_name}')
-    im = Image.open(args.content).convert('L')
-
-    image = np.array(im)
-    saliency = cv2.saliency.StaticSaliencySpectralResidual_create()
-    (success, sal_map) = saliency.computeSaliency(image)
-
-    sal_map = gaussian_filter(sal_map, sigma=im.width / 16 / 2)
-    edges = cv2.Canny(image, 50, 150)
-    edges = gaussian_filter(edges, sigma=2)
-
-    sal_map /= np.max(sal_map)
-    image = image + image * (1 - sal_map) - edges
-    image = np.clip(image, 0, 255)
-
-    im = Image.fromarray(image)
-    im = im.convert('RGB')
-
-    im.save(pre_name)
-    args.content = pre_name
-
-    #pre_name = make_filepath(args.content, ext_name='png')
-    #match_color(pre_name, args.style, args.content)
-    #args.content = pre_name
+    args.gamma = 0.95
+    args.delta = 0.95
+    return
 
 
 def match_color(pre_name, ref_img, target_img):

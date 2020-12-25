@@ -46,12 +46,11 @@ def pre_pencil(args):
     im = Image.open(args.content).convert('L')
 
     image = np.array(im)
-    # initialize OpenCV's static saliency spectral residual detector and compute the saliency map
     saliency = cv2.saliency.StaticSaliencySpectralResidual_create()
     (success, sal_map) = saliency.computeSaliency(image)
 
     sal_map = gaussian_filter(sal_map, sigma=im.width / 8 / 2)
-    edges = cv2.Canny(image, 84, 128)
+    edges = cv2.Canny(image, 50, 150)
     edges = gaussian_filter(edges, sigma=2)
 
     sal_map /= np.max(sal_map)
@@ -75,14 +74,13 @@ def pre_ink(args):
     im = Image.open(args.content).convert('L')
 
     image = np.array(im)
-    edges = cv2.Canny(image, 64, 128)
-    edges = gaussian_filter(edges, sigma=2)
-
-    # initialize OpenCV's static saliency spectral residual detector and compute the saliency map
     saliency = cv2.saliency.StaticSaliencySpectralResidual_create()
     (success, sal_map) = saliency.computeSaliency(image)
 
     sal_map = gaussian_filter(sal_map, sigma=im.width / 16 / 2)
+    edges = cv2.Canny(image, 50, 150)
+    edges = gaussian_filter(edges, sigma=2)
+
     sal_map /= np.max(sal_map)
     image = image + image * (1 - sal_map) - edges
     image = np.clip(image, 0, 255)

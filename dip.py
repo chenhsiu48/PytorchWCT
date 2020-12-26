@@ -40,20 +40,42 @@ def ensure_dir(path):
         os.makedirs(path)
 
 
+def get_saliency_map(image, sigma=24, drop_pct=0.1):
+    saliency = cv2.saliency.StaticSaliencySpectralResidual_create()
+    (success, sal_map) = saliency.computeSaliency(image)
+
+    s = sorted(list(sal_map.reshape(-1)))
+    th = s[int(len(s) * drop_pct)]
+    sal_map[sal_map <= th] = 0
+
+    sal_map = gaussian_filter(sal_map, sigma=sigma)
+    sal_map /= np.max(sal_map)
+    return sal_map
+
+
+def adjust_gamma(image, gamma=1.0):
+    # build a lookup table mapping the pixel values [0, 255] to
+    # their adjusted gamma values
+    invGamma = 1.0 / gamma
+    table = np.array([((i / 255.0) ** invGamma) * 255
+        for i in np.arange(0, 256)]).astype("uint8")
+    # apply gamma correction using the lookup table
+    return cv2.LUT(image, table)
+
+
 def pre_pencil(args):
     pre_name = make_filepath(args.content, tag='pre_pencil', ext_name='png')
     print(f'preprocess pencil {pre_name}')
     im = Image.open(args.content).convert('L')
 
     image = np.array(im)
-    saliency = cv2.saliency.StaticSaliencySpectralResidual_create()
-    (success, sal_map) = saliency.computeSaliency(image)
+    sal_map = get_saliency_map(image, drop_pct=0.1)
+    sal_map = (sal_map * 255).astype(np.uint8)
+    sal_map = adjust_gamma(sal_map, 2).astype(np.float) / 255.0
 
-    sal_map = gaussian_filter(sal_map, sigma=im.width / 8 / 2)
     edges = cv2.Canny(image, 50, 150)
     edges = gaussian_filter(edges, sigma=2)
 
-    sal_map /= np.max(sal_map)
     image = image + image * (1 - sal_map) - edges
     image = np.clip(image, 0, 255)
 
@@ -69,9 +91,25 @@ def pre_pencil(args):
 
 
 def pre_ink(args):
-    args.gamma = 0.95
-    args.delta = 0.95
-    return
+    pre_name = make_filepath(args.content, tag='pre_ink', ext_name='png')
+    print(f'preprocess pencil {pre_name}')
+    im = Image.open(args.content)
+
+    image = np.array(im.convert('L'))
+    sal_map = get_saliency_map(image, sigma=50, drop_pct=0.2)
+    sal_map = np.stack((sal_map, sal_map, sal_map), axis=2)
+
+    sal_map = (sal_map * 255).astype(np.uint8)
+    sal_map = adjust_gamma(sal_map, 1.5).astype(np.float) / 255.0
+
+    white = np.full_like(im, 255)
+
+    im = (1 - sal_map) * white + sal_map *  im
+
+    im = Image.fromarray(im.astype(np.uint8))
+
+    im.save(pre_name)
+    args.content = pre_name
 
 
 def match_color(pre_name, ref_img, target_img):

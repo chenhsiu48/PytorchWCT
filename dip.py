@@ -69,12 +69,12 @@ def pre_pencil(args):
     im = Image.open(args.content).convert('L')
 
     image = np.array(im)
-    sal_map = get_saliency_map(image, drop_pct=0.1)
+    sal_map = get_saliency_map(image, sigma=25, drop_pct=0.1)
     sal_map = (sal_map * 255).astype(np.uint8)
     sal_map = adjust_gamma(sal_map, 2).astype(np.float) / 255.0
 
     edges = cv2.Canny(image, 50, 150)
-    edges = gaussian_filter(edges, sigma=2)
+    edges = gaussian_filter(edges, sigma=max(1, min(image.shape) // 200))
 
     image = image + image * (1 - sal_map) - edges
     image = np.clip(image, 0, 255)

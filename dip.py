@@ -125,12 +125,50 @@ def match_color(pre_name, ref_img, target_img):
 
 
 def oil_handler(args):
+    pre_name = make_filepath(args.content, tag='pre_oil', ext_name='png')
+    print(f'preprocess oil {pre_name}')
+    im = Image.open(args.content)
+
+    image = np.array(im)
+    hsv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
+    h = hsv[:,:,0]
+    s = hsv[:,:,1]
+    v = hsv[:,:,2]
+    s = adjust_gamma(s, 1.5)
+    v = adjust_gamma(v, 0.9)
+    hsv = np.stack((h, s, v), axis=2)
+    image = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+    im = Image.fromarray(image)
+
+    im.save(pre_name)
+    args.content = pre_name
+
     pre_name = make_filepath(args.style, tag='edit', ext_name='png')
     match_color(pre_name, args.content, args.style)
     args.style = pre_name
 
 
 def water_handler(args):
+    pre_name = make_filepath(args.content, tag='pre_water', ext_name='png')
+    print(f'preprocess water {pre_name}')
+    im = Image.open(args.content)
+
+    image = np.array(im)
+    hsv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
+    h = hsv[:,:,0]
+    s = hsv[:,:,1]
+    v = hsv[:,:,2]
+    s = adjust_gamma(s, 0.75)
+    v = adjust_gamma(v, 1.1)
+    hsv = np.stack((h, s, v), axis=2)
+    image = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+    im = Image.fromarray(image)
+
+    im.save(pre_name)
+    args.content = pre_name
+
     pre_name = make_filepath(args.style, tag='edit', ext_name='png')
     match_color(pre_name, args.content, args.style)
     args.style = pre_name

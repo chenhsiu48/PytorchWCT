@@ -6,6 +6,7 @@ models_pytorch.zip
 __pycache__
 .idea
 *.pyc
+.ipynb_checkpoints/
 
 # Temporary Files
 *~

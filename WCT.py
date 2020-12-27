@@ -6,9 +6,9 @@ from util import *
 import time
 import dip
 import glob
+import torch.nn as nn
 
-
-def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, outf, transform_method):
+def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, outf, transform_method, sal_map):
     current_result = contentImg
     eIorigs = [f.cpu().squeeze(0) for f in wct.encoder(contentImg, targets)]
     eIss = [f.cpu().squeeze(0) for f in wct.encoder(styleImg, targets)]
@@ -24,7 +24,12 @@ def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, outf
         CsIlast = wct.transform(eIlast, eIs, transform_method).float()
         CsIorig = wct.transform(eIorig, eIs, transform_method).float()
 
-        decoder_input = (gamma * (delta * CsIlast + (1 - delta) * CsIorig) + (1 - gamma) * eIorig)
+        w = nn.functional.interpolate(sal_map, size=(CsIlast.shape[1], CsIlast.shape[2])).squeeze(0)
+        w = 0.2 * w / torch.max(w)
+
+        gP = gamma - w
+        dP = delta - w / 2
+        decoder_input = (gP * (dP * CsIlast + (1 - dP) * CsIorig) + (1 - gP) * eIorig)
         decoder_input = decoder_input.unsqueeze(0).to(next(wct.parameters()).device)
 
         decoder = wct.decoders[target]
@@ -43,6 +48,10 @@ def exec_transfer(args):
     if args.cuda:
         wct.cuda(args.gpu)
 
+
+    image = np.array(Image.open(args.content).convert('L'))
+    sal_map = torch.tensor(dip.get_saliency_map(image, sigma=10, drop_pct=0)).unsqueeze(0).unsqueeze(0)
+
     avgTime = 0
     with torch.no_grad():
         for i, (contentImg, styleImg, imname) in enumerate(loader):
@@ -57,8 +66,7 @@ def exec_transfer(args):
             start_time = time.time()
             # WCT Style Transfer
             targets = [f'relu{t}_1' for t in args.targets]
-            styleTransfer(wct, targets, contentImg, styleImg, imname,
-                          args.gamma, args.delta, args.outf, args.transform_method)
+            styleTransfer(wct, targets, contentImg, styleImg, imname, args.gamma, args.delta, args.outf, args.transform_method, sal_map)
             end_time = time.time()
             print('Elapsed time is: %f' % (end_time - start_time))
             avgTime += (end_time - start_time)
@@ -87,7 +95,7 @@ if __name__ == '__main__':
     parser.add_argument('--fineSize', type=int, default=0, help='resize image to fineSize x fineSize,leave it to 0 if not resize')
     parser.add_argument('--outf', default='output/', help='folder to output images')
     parser.add_argument('--targets', default=[5, 4, 3, 2, 1], nargs='+', help='which layers to stylize at. Order matters!')
-    parser.add_argument('--gamma', type=float, default=0.8, help='hyperparameter to blend original content feature and colorized features. See Wynen et al. 2018 eq. (3)')
+    parser.add_argument('--gamma', type=float, default=0.9, help='hyperparameter to blend original content feature and colorized features. See Wynen et al. 2018 eq. (3)')
     parser.add_argument('--delta', type=float, default=0.9, help='hyperparameter to blend wct features from current input and original input. See Wynen et al. 2018 eq. (3)')
     parser.add_argument('--gpu', type=int, default=0, help="which gpu to run on.  default is 0")
 

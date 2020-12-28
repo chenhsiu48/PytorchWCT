@@ -75,12 +75,9 @@ def exec_transfer(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--contentPath', default='images/content', help='path to train')
-    parser.add_argument('--stylePath', default='style', help='path to train')
     parser.add_argument('--content', default=None, help='')
     parser.add_argument('--style', default=None, help='')
     parser.add_argument('--effect', default=None, help='water, ink, oil, pencil')
-    parser.add_argument('--workers', default=2, type=int, metavar='N', help='number of data loading workers (default: 4)')
     parser.add_argument('--encoder', default='models/vgg19_normalized.pth.tar', help='Path to the VGG conv1_1')
     parser.add_argument('--decoder5', default='models/vgg19_normalized_decoder5.pth.tar', help='Path to the decoder5')
     parser.add_argument('--decoder4', default='models/vgg19_normalized_decoder4.pth.tar', help='Path to the decoder4')
@@ -91,7 +88,6 @@ if __name__ == '__main__':
     parser.add_argument('--transform-method', choices=['original', 'closed-form'], default='original',
                         help=('How to whiten and color the features. "original" for the formulation of Li et al. ( https://arxiv.org/abs/1705.08086 )  '
                               'or "closed-form" for method of Lu et al. ( https://arxiv.org/abs/1906.00668 '))
-    parser.add_argument('--batch_size', type=int, default=1, help='batch size')
     parser.add_argument('--fineSize', type=int, default=0, help='resize image to fineSize x fineSize,leave it to 0 if not resize')
     parser.add_argument('--outf', default='output/', help='folder to output images')
     parser.add_argument('--targets', default=[5, 4, 3, 2, 1], nargs='+', help='which layers to stylize at. Order matters!')

@@ -148,16 +148,12 @@ def pencil_handler(args):
     im = im_org.convert('L')
 
     image = np.array(im)
-    sal_map = get_saliency_map(np.array(im_org), sigma=25, drop_pct=0.1)
-    sal_map = (sal_map * 255).astype(np.uint8)
-    sal_map = adjust_gamma(sal_map, 2).astype(np.float) / 255.0
+    sal_map = get_saliency_map(np.array(im_org), sigma=50, drop_pct=0.1)
 
     im_sal_map = np.copy(sal_map)
 
-    edges = cv2.Canny(image, 50, 150)
-    edges = gaussian_filter(edges, sigma=max(1, min(image.shape) // 200))
-
-    image = image + image * (1 - sal_map) - edges
+    white = np.full_like(image, 255)
+    image = image * sal_map + white * (1 - sal_map)
     image = np.clip(image, 0, 255)
 
     im = Image.fromarray(image)
@@ -167,11 +163,7 @@ def pencil_handler(args):
     args.content = pre_name
     im_edit = Image.open(args.content)
 
-    pre_name = make_filepath(args.style, tag='edit', ext_name='png')
-    match_color(pre_name, args.content, args.style)
-    args.style = pre_name
-
-    im_style_edit = Image.open(args.style)
+    im_style_edit = im_style.copy()
 
     return (im_org, im_sal_map, im_edit, im_style, im_style_edit)
 
@@ -185,22 +177,20 @@ def ink_handler(args):
     sal_map = get_saliency_map(np.array(im_org), sigma=50, drop_pct=0.2)
 
     im_sal_map = np.copy(sal_map)
-
-    sal_map = (sal_map * 255).astype(np.uint8)
-    sal_map = adjust_gamma(sal_map, 1.5).astype(np.float) / 255.0
     sal_map = np.stack((sal_map, sal_map, sal_map), axis=2)
 
     white = np.full_like(im_org, 255)
+    image = np.array(im_org)
+    image = image * sal_map + white * (1 - sal_map)
+    image = np.clip(image, 0, 255)
 
-    im = (1 - sal_map) * white + sal_map * im_org
-
-    im = Image.fromarray(im.astype(np.uint8))
+    im = Image.fromarray(image.astype(np.uint8))
 
     im.save(pre_name)
     args.content = pre_name
     im_edit = Image.open(args.content)
 
-    im_style_edit = Image.open(args.style)
+    im_style_edit = im_style.copy()
 
     return (im_org, im_sal_map, im_edit, im_style, im_style_edit)
 

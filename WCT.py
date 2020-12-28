@@ -126,7 +126,7 @@ if __name__ == '__main__':
             args.effect = re.sub('\d+', '', os.path.basename(args.style).split('.')[0])
         handle_effect(args)
     elif args.effect is not None:
-        styles = glob.glob(dip.join_path(args.stylePath, f'{args.effect}*.jpg'))
+        styles = glob.glob(f'style/{args.effect}*.jpg')
         for s in styles:
             org_content = args.content
             args.style = s

@@ -41,7 +41,7 @@ def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, outf
     return current_result
 
 
-def exec_transfer(args):
+def exec_transfer(args, sal_map):
     dataset = DatasetOne(args.content, args.style, args.fineSize)
     loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=1, shuffle=False)
 
@@ -49,9 +49,7 @@ def exec_transfer(args):
     if args.cuda:
         wct.cuda(args.gpu)
 
-
-    image = np.array(Image.open(args.content).convert('L'))
-    sal_map = torch.tensor(dip.get_saliency_map(image, sigma=10, drop_pct=0)).unsqueeze(0).unsqueeze(0)
+    sal_map = torch.FloatTensor(sal_map).unsqueeze(0).unsqueeze(0)
 
     avgTime = 0
     with torch.no_grad():
@@ -71,7 +69,28 @@ def exec_transfer(args):
             end_time = time.time()
             print('Elapsed time is: %f' % (end_time - start_time))
             avgTime += (end_time - start_time)
+            im_transfer = Image.open(os.path.join(args.outf, imname))
     print('Processed %d images. Averaged time is %f' % ((i + 1), avgTime / (i + 1)))
+    return im_transfer
+
+
+def handle_effect(args):
+    db_name = dip.make_filepath(args.content, dir_name=args.outf, tag=f'debug-{args.effect}', ext_name='png')
+
+    (im, sal_map, im_edit, im_style, style_edit) = dip.handler[args.effect](args)
+    im_transfer = exec_transfer(args, sal_map)
+    im = im.resize(im_transfer.size)
+
+    im_debug = Image.new('RGB', (im.size[0] * 3, im.size[1] * 2))
+    im_debug.paste(im, (0, 0, im.width, im.height))
+    im_debug.paste(Image.fromarray(sal_map * 255).resize(im_transfer.size).convert('RGB'), (im.width, 0, im.width * 2, im.height))
+    im_debug.paste(im_edit.resize(im_transfer.size), (im.width * 2, 0, im.width * 3, im.height))
+    im_debug.paste(im_style.resize(im_transfer.size), (0, im.height, im.width, im.height * 2))
+    im_debug.paste(style_edit.resize(im_transfer.size), (im.width, im.height, im.width * 2, im.height * 2))
+    im_debug.paste(im_transfer, (im.width * 2, im.height, im.width * 3, im.height * 2))
+
+    print(f'save debug image {db_name}')
+    im_debug.save(db_name)
 
 
 if __name__ == '__main__':
@@ -105,15 +124,13 @@ if __name__ == '__main__':
     elif args.style is not None:
         if args.effect is None:
             args.effect = re.sub('\d+', '', os.path.basename(args.style).split('.')[0])
-        dip.handler[args.effect](args)
-        exec_transfer(args)
+        handle_effect(args)
     elif args.effect is not None:
         styles = glob.glob(dip.join_path(args.stylePath, f'{args.effect}*.jpg'))
         for s in styles:
             org_content = args.content
             args.style = s
-            dip.handler[args.effect](args)
-            exec_transfer(args)
+            handle_effect(args)
             args.content = org_content
     elif args.style is None:
         print(f'missing --style')

@@ -63,55 +63,6 @@ def adjust_gamma(image, gamma=1.0):
     return cv2.LUT(image, table)
 
 
-def pre_pencil(args):
-    pre_name = make_filepath(args.content, tag='pre_pencil', ext_name='png')
-    print(f'preprocess pencil {pre_name}')
-    im = Image.open(args.content).convert('L')
-
-    image = np.array(im)
-    sal_map = get_saliency_map(image, sigma=25, drop_pct=0.1)
-    sal_map = (sal_map * 255).astype(np.uint8)
-    sal_map = adjust_gamma(sal_map, 2).astype(np.float) / 255.0
-
-    edges = cv2.Canny(image, 50, 150)
-    edges = gaussian_filter(edges, sigma=max(1, min(image.shape) // 200))
-
-    image = image + image * (1 - sal_map) - edges
-    image = np.clip(image, 0, 255)
-
-    im = Image.fromarray(image)
-    im = im.convert('RGB')
-
-    im.save(pre_name)
-    args.content = pre_name
-
-    pre_name = make_filepath(args.style, tag='edit', ext_name='png')
-    match_color(pre_name, args.content, args.style)
-    args.style = pre_name
-
-
-def pre_ink(args):
-    pre_name = make_filepath(args.content, tag='pre_ink', ext_name='png')
-    print(f'preprocess pencil {pre_name}')
-    im = Image.open(args.content)
-
-    image = np.array(im.convert('L'))
-    sal_map = get_saliency_map(image, sigma=50, drop_pct=0.2)
-    sal_map = np.stack((sal_map, sal_map, sal_map), axis=2)
-
-    sal_map = (sal_map * 255).astype(np.uint8)
-    sal_map = adjust_gamma(sal_map, 1.5).astype(np.float) / 255.0
-
-    white = np.full_like(im, 255)
-
-    im = (1 - sal_map) * white + sal_map *  im
-
-    im = Image.fromarray(im.astype(np.uint8))
-
-    im.save(pre_name)
-    args.content = pre_name
-
-
 def match_color(pre_name, ref_img, target_img):
     from skimage.io import imread, imsave
     from skimage.exposure import match_histograms
@@ -127,9 +78,12 @@ def match_color(pre_name, ref_img, target_img):
 def oil_handler(args):
     pre_name = make_filepath(args.content, tag='pre_oil', ext_name='png')
     print(f'preprocess oil {pre_name}')
-    im = Image.open(args.content)
+    im_org = Image.open(args.content)
+    im_style = Image.open(args.style).resize(im_org.size)
 
-    image = np.array(im)
+    im_sal_map = get_saliency_map(np.array(im_org), sigma=10, drop_pct=0)
+
+    image = np.array(im_org)
     hsv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
     h = hsv[:,:,0]
     s = hsv[:,:,1]
@@ -142,19 +96,26 @@ def oil_handler(args):
     im = Image.fromarray(image)
 
     im.save(pre_name)
+    im_edit = im.copy()
     args.content = pre_name
 
     pre_name = make_filepath(args.style, tag='edit', ext_name='png')
     match_color(pre_name, args.content, args.style)
     args.style = pre_name
+    im_style_edit = Image.open(args.style).resize(im_org.size)
+
+    return (im_org, im_sal_map, im_edit, im_style, im_style_edit)
 
 
 def water_handler(args):
     pre_name = make_filepath(args.content, tag='pre_water', ext_name='png')
     print(f'preprocess water {pre_name}')
-    im = Image.open(args.content)
+    im_org = Image.open(args.content)
+    im_style = Image.open(args.style).resize(im_org.size)
 
-    image = np.array(im)
+    im_sal_map = get_saliency_map(np.array(im_org), sigma=10, drop_pct=0)
+
+    image = np.array(im_org)
     hsv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
     h = hsv[:,:,0]
     s = hsv[:,:,1]
@@ -167,19 +128,81 @@ def water_handler(args):
     im = Image.fromarray(image)
 
     im.save(pre_name)
+    im_edit = im.copy()
     args.content = pre_name
 
     pre_name = make_filepath(args.style, tag='edit', ext_name='png')
     match_color(pre_name, args.content, args.style)
     args.style = pre_name
+    im_style_edit = Image.open(args.style).resize(im_org.size)
+
+    return (im_org, im_sal_map, im_edit, im_style, im_style_edit)
 
 
 def pencil_handler(args):
-    pre_pencil(args)
+    pre_name = make_filepath(args.content, tag='pre_pencil', ext_name='png')
+    print(f'preprocess pencil {pre_name}')
+    im_org = Image.open(args.content)
+    im_style = Image.open(args.style)
+
+    im = im_org.convert('L')
+
+    image = np.array(im)
+    sal_map = get_saliency_map(np.array(im_org), sigma=25, drop_pct=0.1)
+    sal_map = (sal_map * 255).astype(np.uint8)
+    sal_map = adjust_gamma(sal_map, 2).astype(np.float) / 255.0
+
+    im_sal_map = np.copy(sal_map)
+
+    edges = cv2.Canny(image, 50, 150)
+    edges = gaussian_filter(edges, sigma=max(1, min(image.shape) // 200))
+
+    image = image + image * (1 - sal_map) - edges
+    image = np.clip(image, 0, 255)
+
+    im = Image.fromarray(image)
+    im = im.convert('RGB')
+
+    im.save(pre_name)
+    args.content = pre_name
+    im_edit = Image.open(args.content)
+
+    pre_name = make_filepath(args.style, tag='edit', ext_name='png')
+    match_color(pre_name, args.content, args.style)
+    args.style = pre_name
+
+    im_style_edit = Image.open(args.style)
+
+    return (im_org, im_sal_map, im_edit, im_style, im_style_edit)
 
 
 def ink_handler(args):
-    pre_ink(args)
+    pre_name = make_filepath(args.content, tag='pre_ink', ext_name='png')
+    print(f'preprocess pencil {pre_name}')
+    im_org = Image.open(args.content)
+    im_style = Image.open(args.style)
+
+    sal_map = get_saliency_map(np.array(im_org), sigma=50, drop_pct=0.2)
+
+    im_sal_map = np.copy(sal_map)
+
+    sal_map = (sal_map * 255).astype(np.uint8)
+    sal_map = adjust_gamma(sal_map, 1.5).astype(np.float) / 255.0
+    sal_map = np.stack((sal_map, sal_map, sal_map), axis=2)
+
+    white = np.full_like(im_org, 255)
+
+    im = (1 - sal_map) * white + sal_map * im_org
+
+    im = Image.fromarray(im.astype(np.uint8))
+
+    im.save(pre_name)
+    args.content = pre_name
+    im_edit = Image.open(args.content)
+
+    im_style_edit = Image.open(args.style)
+
+    return (im_org, im_sal_map, im_edit, im_style, im_style_edit)
 
 
 handler = { 'oil': oil_handler, 'water': water_handler, 'ink': ink_handler, 'pencil': pencil_handler}

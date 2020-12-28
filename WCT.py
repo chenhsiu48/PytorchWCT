@@ -4,6 +4,7 @@ import torchvision.utils as vutils
 from Loader import DatasetOne
 from util import *
 import time
+import re
 import dip
 import glob
 import torch.nn as nn
@@ -77,35 +78,33 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--content', default=None, help='')
     parser.add_argument('--style', default=None, help='')
-    parser.add_argument('--effect', default=None, help='water, ink, oil, pencil')
-    parser.add_argument('--encoder', default='models/vgg19_normalized.pth.tar', help='Path to the VGG conv1_1')
-    parser.add_argument('--decoder5', default='models/vgg19_normalized_decoder5.pth.tar', help='Path to the decoder5')
-    parser.add_argument('--decoder4', default='models/vgg19_normalized_decoder4.pth.tar', help='Path to the decoder4')
-    parser.add_argument('--decoder3', default='models/vgg19_normalized_decoder3.pth.tar', help='Path to the decoder3')
-    parser.add_argument('--decoder2', default='models/vgg19_normalized_decoder2.pth.tar', help='Path to the decoder2')
-    parser.add_argument('--decoder1', default='models/vgg19_normalized_decoder1.pth.tar', help='Path to the decoder1')
+    parser.add_argument('--effect', choices=dip.handler.keys(), default=None, help='artistic style transfer effect')
     parser.add_argument('--cuda', default=True, help='enables cuda')
+    parser.add_argument('--gpu', type=int, default=0, help="which gpu to run on.  default is 0")
     parser.add_argument('--transform-method', choices=['original', 'closed-form'], default='original',
                         help=('How to whiten and color the features. "original" for the formulation of Li et al. ( https://arxiv.org/abs/1705.08086 )  '
                               'or "closed-form" for method of Lu et al. ( https://arxiv.org/abs/1906.00668 '))
-    parser.add_argument('--fineSize', type=int, default=0, help='resize image to fineSize x fineSize,leave it to 0 if not resize')
+    parser.add_argument('--fineSize', type=int, default=0, help='resize image to fineSize x fineSize, leave it to 0 if not resize')
     parser.add_argument('--outf', default='output/', help='folder to output images')
     parser.add_argument('--targets', default=[5, 4, 3, 2, 1], nargs='+', help='which layers to stylize at. Order matters!')
     parser.add_argument('--gamma', type=float, default=0.9, help='hyperparameter to blend original content feature and colorized features. See Wynen et al. 2018 eq. (3)')
     parser.add_argument('--delta', type=float, default=0.9, help='hyperparameter to blend wct features from current input and original input. See Wynen et al. 2018 eq. (3)')
-    parser.add_argument('--gpu', type=int, default=0, help="which gpu to run on.  default is 0")
 
     args = parser.parse_args()
+    args.encoder = 'models/vgg19_normalized.pth.tar'
+    args.decoder5 = 'models/vgg19_normalized_decoder5.pth.tar'
+    args.decoder4 = 'models/vgg19_normalized_decoder4.pth.tar'
+    args.decoder3 = 'models/vgg19_normalized_decoder3.pth.tar'
+    args.decoder2 = 'models/vgg19_normalized_decoder2.pth.tar'
+    args.decoder1 = 'models/vgg19_normalized_decoder1.pth.tar'
 
     dip.ensure_dir(args.outf)
-
-    if args.effect is not None and args.effect not in dip.handler.keys():
-        print(f'effect {args.effect} not supported')
-        exit(1)
 
     if args.content is None:
         print(f'missing --content')
     elif args.style is not None:
+        if args.effect is None:
+            args.effect = re.sub('\d+', '', os.path.basename(args.style).split('.')[0])
         dip.handler[args.effect](args)
         exec_transfer(args)
     elif args.effect is not None:

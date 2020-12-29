@@ -107,6 +107,8 @@ def handle_effect(args):
     im_comp = Image.new('RGB', (im.width * 2, im.height))
     im_comp.paste(im, (0, 0, im.width, im.height))
     im_comp.paste(im_transfer, (im.width, 0, im.width * 2, im.height))
+    if max(im_raw.size) < 500:
+        im_comp = im_comp.resize((im_comp.width // 2, im_comp.height // 2))
     print(f'save compare image {comp_name}')
     im_comp.save(comp_name)
 

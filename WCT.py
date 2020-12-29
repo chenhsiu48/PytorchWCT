@@ -107,7 +107,7 @@ if __name__ == '__main__':
     parser.add_argument('--outf', default='output/', help='folder to output images')
     parser.add_argument('--targets', default=[5, 4, 3, 2, 1], nargs='+', help='which layers to stylize at. Order matters!')
     parser.add_argument('--gamma', type=float, default=0.9, help='hyperparameter to blend original content feature and colorized features. See Wynen et al. 2018 eq. (3)')
-    parser.add_argument('--delta', type=float, default=0.9, help='hyperparameter to blend wct features from current input and original input. See Wynen et al. 2018 eq. (3)')
+    parser.add_argument('--delta', type=float, default=0.95, help='hyperparameter to blend wct features from current input and original input. See Wynen et al. 2018 eq. (3)')
 
     args = parser.parse_args()
     args.encoder = 'models/vgg19_normalized.pth.tar'

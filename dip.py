@@ -145,54 +145,32 @@ def pencil_handler(args):
     im_org = Image.open(args.content)
     im_style = Image.open(args.style)
 
-    im = im_org.convert('L')
+    sal_map = get_saliency_map(np.array(im_org), sigma=20, drop_pct=0.1)
 
-    image = np.array(im)
-    sal_map = get_saliency_map(np.array(im_org), sigma=50, drop_pct=0.1)
-
-    im_sal_map = np.copy(sal_map)
-
-    white = np.full_like(image, 255)
-    image = image * sal_map + white * (1 - sal_map)
-    image = np.clip(image, 0, 255)
-
-    im = Image.fromarray(image)
-    im = im.convert('RGB')
-
+    im = im_org.convert('L').convert('RGB')
     im.save(pre_name)
     args.content = pre_name
     im_edit = Image.open(args.content)
 
-    im_style_edit = im_style.copy()
+    pre_name = make_filepath(args.style, tag='edit', ext_name='png')
+    match_color(pre_name, args.content, args.style)
+    args.style = pre_name
+    im_style_edit = Image.open(args.style).resize(im_org.size)
 
-    return (im_org, im_sal_map, im_edit, im_style, im_style_edit)
+    return (im_org, sal_map, im_edit, im_style, im_style_edit)
 
 
 def ink_handler(args):
-    pre_name = make_filepath(args.content, tag='pre_ink', ext_name='png')
-    print(f'preprocess pencil {pre_name}')
     im_org = Image.open(args.content)
     im_style = Image.open(args.style)
 
-    sal_map = get_saliency_map(np.array(im_org), sigma=50, drop_pct=0.2)
+    sal_map = get_saliency_map(np.array(im_org), sigma=30, drop_pct=0.2)
 
-    im_sal_map = np.copy(sal_map)
-    sal_map = np.stack((sal_map, sal_map, sal_map), axis=2)
-
-    white = np.full_like(im_org, 255)
-    image = np.array(im_org)
-    image = image * sal_map + white * (1 - sal_map)
-    image = np.clip(image, 0, 255)
-
-    im = Image.fromarray(image.astype(np.uint8))
-
-    im.save(pre_name)
-    args.content = pre_name
-    im_edit = Image.open(args.content)
+    im_edit = im_org
 
     im_style_edit = im_style.copy()
 
-    return (im_org, im_sal_map, im_edit, im_style, im_style_edit)
+    return (im_org, sal_map, im_edit, im_style, im_style_edit)
 
 
 handler = { 'oil': oil_handler, 'water': water_handler, 'ink': ink_handler, 'pencil': pencil_handler}

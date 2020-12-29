@@ -41,7 +41,7 @@ def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, outf
     return current_result
 
 
-def exec_transfer(args, sal_map):
+def exec_transfer(args, sal_map, is_doubled):
     dataset = DatasetOne(args.content, args.style, args.fineSize)
     loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=1, shuffle=False)
 
@@ -70,6 +70,8 @@ def exec_transfer(args, sal_map):
             print('Elapsed time is: %f' % (end_time - start_time))
             avgTime += (end_time - start_time)
             im_transfer = Image.open(os.path.join(args.outf, imname))
+            print(f'resize the output to original size')
+            im_transfer.resize((im_transfer.width // 2, im_transfer.height // 2)).save(os.path.join(args.outf, imname))
     print('Processed %d images. Averaged time is %f' % ((i + 1), avgTime / (i + 1)))
     return im_transfer
 
@@ -77,11 +79,20 @@ def exec_transfer(args, sal_map):
 def handle_effect(args):
     db_name = dip.make_filepath(args.content, dir_name=args.outf, tag=f'debug-{args.effect}', ext_name='png')
 
+    im_raw = Image.open(args.content)
+    if max(im_raw.size) < 500:
+        name_2x = dip.make_filepath(args.content, tag='2x', ext_name='png')
+        print(f'input image too small, double the size to {name_2x}')
+        im_2x = im_raw.resize((im_raw.width * 2, im_raw.height * 2))
+        im_2x.save(name_2x)
+        args.content = name_2x
+
     (im, sal_map, im_edit, im_style, style_edit) = dip.handler[args.effect](args)
-    im_transfer = exec_transfer(args, sal_map)
+    im_transfer = exec_transfer(args, sal_map, max(im_raw.size) < 500)
+
     im = im.resize(im_transfer.size)
 
-    im_debug = Image.new('RGB', (im.size[0] * 3, im.size[1] * 2))
+    im_debug = Image.new('RGB', (im.width * 3, im.height * 2))
     im_debug.paste(im, (0, 0, im.width, im.height))
     im_debug.paste(Image.fromarray(sal_map * 255).resize(im_transfer.size).convert('RGB'), (im.width, 0, im.width * 2, im.height))
     im_debug.paste(im_edit.resize(im_transfer.size), (im.width * 2, 0, im.width * 3, im.height))
@@ -91,6 +102,13 @@ def handle_effect(args):
 
     print(f'save debug image {db_name}')
     im_debug.save(db_name)
+
+    comp_name = dip.make_filepath(args.content, dir_name=args.outf, tag=f'comp-{args.effect}', ext_name='png')
+    im_comp = Image.new('RGB', (im.width * 2, im.height))
+    im_comp.paste(im, (0, 0, im.width, im.height))
+    im_comp.paste(im_transfer, (im.width, 0, im.width * 2, im.height))
+    print(f'save compare image {comp_name}')
+    im_comp.save(comp_name)
 
 
 if __name__ == '__main__':

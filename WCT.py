@@ -41,7 +41,7 @@ def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, outf
     return current_result
 
 
-def exec_transfer(args, sal_map, is_doubled):
+def exec_transfer(args, sal_map):
     dataset = DatasetOne(args.content, args.style, args.fineSize)
     loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=1, shuffle=False)
 
@@ -70,8 +70,9 @@ def exec_transfer(args, sal_map, is_doubled):
             print('Elapsed time is: %f' % (end_time - start_time))
             avgTime += (end_time - start_time)
             im_transfer = Image.open(os.path.join(args.outf, imname))
-            print(f'resize the output to original size')
-            im_transfer.resize((im_transfer.width // 2, im_transfer.height // 2)).save(os.path.join(args.outf, imname))
+            if args.small_content:
+                print(f'resize the output to original size')
+                im_transfer.resize((im_transfer.width // 2, im_transfer.height // 2)).save(os.path.join(args.outf, imname))
     print('Processed %d images. Averaged time is %f' % ((i + 1), avgTime / (i + 1)))
     return im_transfer
 
@@ -80,7 +81,8 @@ def handle_effect(args):
     db_name = dip.make_filepath(args.content, dir_name=args.outf, tag=f'debug-{args.effect}', ext_name='png')
 
     im_raw = Image.open(args.content)
-    if max(im_raw.size) < 500:
+    args.small_content = max(im_raw.size) < 500
+    if args.small_content:
         name_2x = dip.make_filepath(args.content, tag='2x', ext_name='png')
         print(f'input image too small, double the size to {name_2x}')
         im_2x = im_raw.resize((im_raw.width * 2, im_raw.height * 2))
@@ -88,7 +90,7 @@ def handle_effect(args):
         args.content = name_2x
 
     (im, sal_map, im_edit, im_style, style_edit) = dip.handler[args.effect](args)
-    im_transfer = exec_transfer(args, sal_map, max(im_raw.size) < 500)
+    im_transfer = exec_transfer(args, sal_map)
 
     im = im.resize(im_transfer.size)
 
@@ -107,7 +109,7 @@ def handle_effect(args):
     im_comp = Image.new('RGB', (im.width * 2, im.height))
     im_comp.paste(im, (0, 0, im.width, im.height))
     im_comp.paste(im_transfer, (im.width, 0, im.width * 2, im.height))
-    if max(im_raw.size) < 500:
+    if args.small_content:
         im_comp = im_comp.resize((im_comp.width // 2, im_comp.height // 2))
     print(f'save compare image {comp_name}')
     im_comp.save(comp_name)

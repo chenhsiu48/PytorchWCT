@@ -92,6 +92,7 @@ def oil_handler(args):
     v = adjust_gamma(v, 0.9)
     hsv = np.stack((h, s, v), axis=2)
     image = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+    image = cv2.bilateralFilter(image, 9, 41, 41)
 
     im = Image.fromarray(image)
 

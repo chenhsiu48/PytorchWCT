@@ -3,6 +3,8 @@ from PIL import Image
 import cv2
 import numpy as np
 from scipy.ndimage import gaussian_filter
+from util import WCT
+import torch
 
 
 def join_path(*dirs):
@@ -40,7 +42,14 @@ def ensure_dir(path):
         os.makedirs(path)
 
 
-def get_saliency_map(image, sigma=24, drop_pct=0.1):
+def get_saliency_map(image, saliency_method="spectral_residual", **kwargs):
+    try:
+        print("Saliency map: {}".format(saliency_method))
+        return saliency_handler[saliency_method](image, **kwargs)
+    except KeyError:
+        raise ValueError("Bad argument (method {} does not exist)".format(method))
+
+def get_saliency_map_spectral_residual(image, sigma=24, drop_pct=0.1):
     saliency = cv2.saliency.StaticSaliencySpectralResidual_create()
     (success, sal_map) = saliency.computeSaliency(image)
 
@@ -51,6 +60,28 @@ def get_saliency_map(image, sigma=24, drop_pct=0.1):
     sal_map = gaussian_filter(sal_map, sigma=sigma)
     sal_map /= np.max(sal_map)
     return sal_map
+
+def get_vgg_heatmap(image, wct_args, sigma=None):
+    try:
+        h, w, c = image.shape 
+    except ValueError:
+        h, w = image.shape 
+    image_tensor = torch.FloatTensor(image).permute(2, 0, 1).unsqueeze(0)
+    wct = WCT(wct_args)
+    if wct_args.cuda:
+        image_tensor = image_tensor.cuda()
+        wct.cuda(wct_args.gpu)
+    with torch.no_grad():
+        relu_5_1 = wct.encoder(image_tensor)
+
+    feature_map = np.array(relu_5_1.cpu().detach().numpy())[0]
+    saliency_map = np.max(feature_map, axis=0)
+    saliency_map = (saliency_map-saliency_map.min())/(saliency_map.max()-saliency_map.min())
+    saliency_map = cv2.resize(saliency_map, dsize=(w, h))
+    if sigma:
+        saliency_map = gaussian_filter(saliency_map, sigma=sigma)
+    return saliency_map
+
 
 
 def adjust_gamma(image, gamma=1.0):
@@ -81,7 +112,10 @@ def oil_handler(args):
     im_org = Image.open(args.content)
     im_style = Image.open(args.style).resize(im_org.size)
 
-    im_sal_map = get_saliency_map(np.array(im_org), sigma=10, drop_pct=0)
+    if args.saliency_method == "spectral_residual":
+        im_sal_map = get_saliency_map(np.array(im_org), args.saliency_method, sigma=10, drop_pct=0)
+    else:
+        im_sal_map = get_saliency_map(np.array(im_org), args.saliency_method, sigma=10, wct_args=args)
 
     image = np.array(im_org)
     hsv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
@@ -114,7 +148,10 @@ def water_handler(args):
     im_org = Image.open(args.content)
     im_style = Image.open(args.style).resize(im_org.size)
 
-    im_sal_map = get_saliency_map(np.array(im_org), sigma=10, drop_pct=0)
+    if args.saliency_method == "spectral_residual":
+        im_sal_map  = get_saliency_map(np.array(im_org), args.saliency_method, sigma=10, drop_pct=0)
+    else:
+        im_sal_map  = get_saliency_map(np.array(im_org), args.saliency_method, sigma=10, wct_args=args)
 
     image = np.array(im_org)
     hsv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
@@ -146,7 +183,10 @@ def pencil_handler(args):
     im_org = Image.open(args.content)
     im_style = Image.open(args.style)
 
-    sal_map = get_saliency_map(np.array(im_org), sigma=20, drop_pct=0.1)
+    if args.saliency_method == "spectral_residual":
+        sal_map = get_saliency_map(np.array(im_org), args.saliency_method, sigma=50, drop_pct=0.1)
+    else:
+        sal_map = get_saliency_map(np.array(im_org), args.saliency_method, sigma=50, wct_args=args)
 
     im = im_org.convert('L').convert('RGB')
     im.save(pre_name)
@@ -175,3 +215,4 @@ def ink_handler(args):
 
 
 handler = { 'oil': oil_handler, 'water': water_handler, 'ink': ink_handler, 'pencil': pencil_handler}
+saliency_handler = { 'spectral_residual': get_saliency_map_spectral_residual, 'vgg': get_vgg_heatmap}

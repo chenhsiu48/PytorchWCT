@@ -9,10 +9,15 @@ import dip
 import glob
 import torch.nn as nn
 
-def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, outf, transform_method, sal_map):
+def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, outf, transform_method, sal_map, multilevel_saliency=False, mls_reverse=False):
     current_result = contentImg
     eIorigs = [f.cpu().squeeze(0) for f in wct.encoder(contentImg, targets)]
     eIss = [f.cpu().squeeze(0) for f in wct.encoder(styleImg, targets)]
+
+    if multilevel_saliency:
+        factors = np.linspace(0, 1, len(targets))
+        if mls_reverse:
+            factors = factors[::-1]
 
     for i, (target, eIorig, eIs) in enumerate(zip(targets, eIorigs, eIss)):
         print(f'    stylizing at {target}')
@@ -30,6 +35,12 @@ def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, outf
 
         gP = gamma - w
         dP = delta - w / 2
+
+        if multilevel_saliency:
+            gP = gamma
+            dP = (1-factors[i]) * delta
+            
+        
         decoder_input = (gP * (dP * CsIlast + (1 - dP) * CsIorig) + (1 - gP) * eIorig)
         decoder_input = decoder_input.unsqueeze(0).to(next(wct.parameters()).device)
 
@@ -65,7 +76,7 @@ def exec_transfer(args, sal_map):
             start_time = time.time()
             # WCT Style Transfer
             targets = [f'relu{t}_1' for t in args.targets]
-            styleTransfer(wct, targets, contentImg, styleImg, imname, args.gamma, args.delta, args.outf, args.transform_method, sal_map)
+            styleTransfer(wct, targets, contentImg, styleImg, imname, args.gamma, args.delta, args.outf, args.transform_method, sal_map, multilevel_saliency=args.multilevel_saliency, mls_reverse=args.mls_reverse)
             end_time = time.time()
             print('Elapsed time is: %f' % (end_time - start_time))
             avgTime += (end_time - start_time)
@@ -78,7 +89,12 @@ def exec_transfer(args, sal_map):
 
 
 def handle_effect(args):
-    db_name = dip.make_filepath(args.content, dir_name=args.outf, tag=f'debug-{args.effect}', ext_name='png')
+    tag = f'debug-{args.effect}'
+    if args.saliency_method == 'vgg':
+        tag += '-sal_vgg'
+    if args.multilevel_saliency:
+        tag += "-mls"
+    db_name = dip.make_filepath(args.content, dir_name=args.outf, tag=tag, ext_name='png')
 
     im_raw = Image.open(args.content)
     args.small_content = max(im_raw.size) < 500
@@ -130,6 +146,9 @@ if __name__ == '__main__':
     parser.add_argument('--targets', default=[5, 4, 3, 2, 1], nargs='+', help='which layers to stylize at. Order matters!')
     parser.add_argument('--gamma', type=float, default=0.9, help='hyperparameter to blend original content feature and colorized features. See Wynen et al. 2018 eq. (3)')
     parser.add_argument('--delta', type=float, default=0.95, help='hyperparameter to blend wct features from current input and original input. See Wynen et al. 2018 eq. (3)')
+    parser.add_argument('--saliency_method', choices=dip.saliency_handler.keys(), default="spectral_residual")
+    parser.add_argument('--multilevel_saliency', action='store_true')
+    parser.add_argument('--mls_reverse', action='store_true')
 
     args = parser.parse_args()
     args.encoder = 'models/vgg19_normalized.pth.tar'

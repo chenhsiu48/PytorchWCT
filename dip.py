@@ -40,6 +40,12 @@ def ensure_dir(path):
         os.makedirs(path)
 
 
+def rm_files(files):
+    for f in files:
+        if os.path.exists(f):
+            os.remove(f)
+
+
 def get_saliency_map(image, sigma=24, drop_pct=0.1):
     saliency = cv2.saliency.StaticSaliencySpectralResidual_create()
     (success, sal_map) = saliency.computeSaliency(image)
@@ -77,6 +83,7 @@ def match_color(pre_name, ref_img, target_img):
 
 def oil_handler(args):
     pre_name = make_filepath(args.content, tag='pre_oil', ext_name='png')
+    args.cleanup.append(pre_name)
     print(f'preprocess oil {pre_name}')
     im_org = Image.open(args.content)
     im_style = Image.open(args.style).resize(im_org.size)
@@ -101,6 +108,7 @@ def oil_handler(args):
     args.content = pre_name
 
     pre_name = make_filepath(args.style, tag='edit', ext_name='png')
+    args.cleanup.append(pre_name)
     match_color(pre_name, args.content, args.style)
     args.style = pre_name
     im_style_edit = Image.open(args.style).resize(im_org.size)
@@ -110,6 +118,7 @@ def oil_handler(args):
 
 def water_handler(args):
     pre_name = make_filepath(args.content, tag='pre_water', ext_name='png')
+    args.cleanup.append(pre_name)
     print(f'preprocess water {pre_name}')
     im_org = Image.open(args.content)
     im_style = Image.open(args.style).resize(im_org.size)
@@ -133,6 +142,7 @@ def water_handler(args):
     args.content = pre_name
 
     pre_name = make_filepath(args.style, tag='edit', ext_name='png')
+    args.cleanup.append(pre_name)
     match_color(pre_name, args.content, args.style)
     args.style = pre_name
     im_style_edit = Image.open(args.style).resize(im_org.size)
@@ -142,6 +152,7 @@ def water_handler(args):
 
 def pencil_handler(args):
     pre_name = make_filepath(args.content, tag='pre_pencil', ext_name='png')
+    args.cleanup.append(pre_name)
     print(f'preprocess pencil {pre_name}')
     im_org = Image.open(args.content)
     im_style = Image.open(args.style)
@@ -154,6 +165,7 @@ def pencil_handler(args):
     im_edit = Image.open(args.content)
 
     pre_name = make_filepath(args.style, tag='edit', ext_name='png')
+    args.cleanup.append(pre_name)
     match_color(pre_name, args.content, args.style)
     args.style = pre_name
     im_style_edit = Image.open(args.style).resize(im_org.size)

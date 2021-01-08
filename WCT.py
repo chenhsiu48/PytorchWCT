@@ -87,32 +87,34 @@ def handle_effect(args):
         print(f'input image too small, double the size to {name_2x}')
         im_2x = im_raw.resize((im_raw.width * 2, im_raw.height * 2))
         im_2x.save(name_2x)
+        args.cleanup.append(name_2x)
         args.content = name_2x
 
     (im, sal_map, im_edit, im_style, style_edit) = dip.handler[args.effect](args)
     im_transfer = exec_transfer(args, sal_map)
 
-    im = im.resize(im_transfer.size)
+    if args.debug:
+        im = im.resize(im_transfer.size)
 
-    im_debug = Image.new('RGB', (im.width * 3, im.height * 2))
-    im_debug.paste(im, (0, 0, im.width, im.height))
-    im_debug.paste(Image.fromarray(sal_map * 255).resize(im_transfer.size).convert('RGB'), (im.width, 0, im.width * 2, im.height))
-    im_debug.paste(im_edit.resize(im_transfer.size), (im.width * 2, 0, im.width * 3, im.height))
-    im_debug.paste(im_style.resize(im_transfer.size), (0, im.height, im.width, im.height * 2))
-    im_debug.paste(style_edit.resize(im_transfer.size), (im.width, im.height, im.width * 2, im.height * 2))
-    im_debug.paste(im_transfer, (im.width * 2, im.height, im.width * 3, im.height * 2))
+        im_debug = Image.new('RGB', (im.width * 3, im.height * 2))
+        im_debug.paste(im, (0, 0, im.width, im.height))
+        im_debug.paste(Image.fromarray(sal_map * 255).resize(im_transfer.size).convert('RGB'), (im.width, 0, im.width * 2, im.height))
+        im_debug.paste(im_edit.resize(im_transfer.size), (im.width * 2, 0, im.width * 3, im.height))
+        im_debug.paste(im_style.resize(im_transfer.size), (0, im.height, im.width, im.height * 2))
+        im_debug.paste(style_edit.resize(im_transfer.size), (im.width, im.height, im.width * 2, im.height * 2))
+        im_debug.paste(im_transfer, (im.width * 2, im.height, im.width * 3, im.height * 2))
 
-    print(f'save debug image {db_name}')
-    im_debug.save(db_name)
+        print(f'save debug image {db_name}')
+        im_debug.save(db_name)
 
-    comp_name = dip.make_filepath(args.content, dir_name=args.outf, tag=f'comp-{args.effect}', ext_name='png')
-    im_comp = Image.new('RGB', (im.width * 2, im.height))
-    im_comp.paste(im, (0, 0, im.width, im.height))
-    im_comp.paste(im_transfer, (im.width, 0, im.width * 2, im.height))
-    if args.small_content:
-        im_comp = im_comp.resize((im_comp.width // 2, im_comp.height // 2))
-    print(f'save compare image {comp_name}')
-    im_comp.save(comp_name)
+        comp_name = dip.make_filepath(args.content, dir_name=args.outf, tag=f'comp-{args.effect}', ext_name='png')
+        im_comp = Image.new('RGB', (im.width * 2, im.height))
+        im_comp.paste(im, (0, 0, im.width, im.height))
+        im_comp.paste(im_transfer, (im.width, 0, im.width * 2, im.height))
+        if args.small_content:
+            im_comp = im_comp.resize((im_comp.width // 2, im_comp.height // 2))
+        print(f'save compare image {comp_name}')
+        im_comp.save(comp_name)
 
 
 if __name__ == '__main__':
@@ -130,6 +132,7 @@ if __name__ == '__main__':
     parser.add_argument('--targets', default=[5, 4, 3, 2, 1], nargs='+', help='which layers to stylize at. Order matters!')
     parser.add_argument('--gamma', type=float, default=0.9, help='hyperparameter to blend original content feature and colorized features. See Wynen et al. 2018 eq. (3)')
     parser.add_argument('--delta', type=float, default=0.95, help='hyperparameter to blend wct features from current input and original input. See Wynen et al. 2018 eq. (3)')
+    parser.add_argument('--debug', action='store_true', help='debug mode')
 
     args = parser.parse_args()
     args.encoder = 'models/vgg19_normalized.pth.tar'
@@ -138,6 +141,7 @@ if __name__ == '__main__':
     args.decoder3 = 'models/vgg19_normalized_decoder3.pth.tar'
     args.decoder2 = 'models/vgg19_normalized_decoder2.pth.tar'
     args.decoder1 = 'models/vgg19_normalized_decoder1.pth.tar'
+    args.cleanup = []
 
     dip.ensure_dir(args.outf)
 
@@ -156,3 +160,6 @@ if __name__ == '__main__':
             args.content = org_content
     elif args.style is None:
         print(f'missing --style')
+
+    if args.debug is False:
+        dip.rm_files(args.cleanup)

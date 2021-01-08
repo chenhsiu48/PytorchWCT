@@ -37,7 +37,7 @@ def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, outf
         current_result = decoder(decoder_input)
 
     # save_image has this wired design to pad images with 4 pixels at default.
-    vutils.save_image(current_result.cpu().float(), os.path.join(outf, imname))
+    vutils.save_image(current_result.cpu().float(), imname)
     return current_result
 
 
@@ -49,11 +49,11 @@ def exec_transfer(args, sal_map):
 
     avgTime = 0
     with torch.no_grad():
-        for i, (contentImg, styleImg, imname) in enumerate(loader):
+        for i, (contentImg, styleImg, _) in enumerate(loader):
             if (args.cuda):
                 contentImg = contentImg.cuda(args.gpu)
                 styleImg = styleImg.cuda(args.gpu)
-            imname = imname[0]
+            imname = args.out_name
             print(f'Transferring {imname}')
             if (args.cuda):
                 contentImg = contentImg.cuda(args.gpu)
@@ -65,16 +65,17 @@ def exec_transfer(args, sal_map):
             end_time = time.time()
             print('Elapsed time is: %f' % (end_time - start_time))
             avgTime += (end_time - start_time)
-            im_transfer = Image.open(os.path.join(args.outf, imname))
+            im_transfer = Image.open(args.out_name)
             if args.small_content:
                 print(f'resize the output to original size')
-                im_transfer.resize((im_transfer.width // 2, im_transfer.height // 2)).save(os.path.join(args.outf, imname))
+                im_transfer.resize((im_transfer.width // 2, im_transfer.height // 2)).save(args.out_name)
     print('Processed %d images. Averaged time is %f' % ((i + 1), avgTime / (i + 1)))
     return im_transfer
 
 
 def handle_effect(args):
     db_name = dip.make_filepath(args.content, dir_name=args.outf, tag=f'debug-{args.effect}', ext_name='png')
+    args.out_name = dip.make_filepath(args.content, dir_name=args.outf, tag=f'{args.e_tag}', ext_name='png')
 
     im_raw = Image.open(args.content)
     args.small_content = max(im_raw.size) < 500
@@ -147,6 +148,7 @@ if __name__ == '__main__':
     elif args.style is not None:
         if args.effect is None:
             args.effect = re.sub('\d+', '', os.path.basename(args.style).split('.')[0])
+        args.e_tag = os.path.basename(args.style).split('.')[0]
 
         args.wct = WCT(args)
         if args.cuda:
@@ -160,13 +162,6 @@ if __name__ == '__main__':
                 args.content = fn
                 handle_effect(args)
                 args.style = org_style
-    elif args.effect is not None:
-        styles = glob.glob(f'style/{args.effect}*.jpg')
-        for s in styles:
-            org_content = args.content
-            args.style = s
-            handle_effect(args)
-            args.content = org_content
     elif args.style is None:
         print(f'missing --style')
 

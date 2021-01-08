@@ -45,10 +45,6 @@ def exec_transfer(args, sal_map):
     dataset = DatasetOne(args.content, args.style, args.fineSize)
     loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=1, shuffle=False)
 
-    wct = WCT(args)
-    if args.cuda:
-        wct.cuda(args.gpu)
-
     sal_map = torch.FloatTensor(sal_map).unsqueeze(0).unsqueeze(0)
 
     avgTime = 0
@@ -65,7 +61,7 @@ def exec_transfer(args, sal_map):
             start_time = time.time()
             # WCT Style Transfer
             targets = [f'relu{t}_1' for t in args.targets]
-            styleTransfer(wct, targets, contentImg, styleImg, imname, args.gamma, args.delta, args.outf, args.transform_method, sal_map)
+            styleTransfer(args.wct, targets, contentImg, styleImg, imname, args.gamma, args.delta, args.outf, args.transform_method, sal_map)
             end_time = time.time()
             print('Elapsed time is: %f' % (end_time - start_time))
             avgTime += (end_time - start_time)
@@ -119,6 +115,7 @@ def handle_effect(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
+    parser.add_argument('image', nargs = '*', help = 'images')
     parser.add_argument('--content', default=None, help='')
     parser.add_argument('--style', default=None, help='')
     parser.add_argument('--effect', choices=dip.handler.keys(), default=None, help='artistic style transfer effect')
@@ -145,12 +142,24 @@ if __name__ == '__main__':
 
     dip.ensure_dir(args.outf)
 
-    if args.content is None:
-        print(f'missing --content')
+    if args.content is None and len(args.image) == 0:
+        print(f'missing --content or no image provided')
     elif args.style is not None:
         if args.effect is None:
             args.effect = re.sub('\d+', '', os.path.basename(args.style).split('.')[0])
-        handle_effect(args)
+
+        args.wct = WCT(args)
+        if args.cuda:
+            args.wct.cuda(args.gpu)
+
+        if args.content is not None:
+            handle_effect(args)
+        else:
+            for fn in args.image:
+                org_style = args.style
+                args.content = fn
+                handle_effect(args)
+                args.style = org_style
     elif args.effect is not None:
         styles = glob.glob(f'style/{args.effect}*.jpg')
         for s in styles:

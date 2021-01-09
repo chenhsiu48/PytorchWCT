@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./WCT.py --content input/woman.jpg --style style/ink4.jpg
+./WCT.py --content input/woman.jpg --style style/ink6.jpg
 ./WCT.py --content input/woman.jpg --style style/oil6.jpg
 ./WCT.py --content input/woman.jpg --style style/pencil2.jpg
 ./WCT.py --content input/woman.jpg --style style/water.jpg

@@ -6,7 +6,6 @@ from util import *
 import time
 import re
 import dip
-import glob
 import torch.nn as nn
 
 def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, outf, transform_method, sal_map):

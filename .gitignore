@@ -7,6 +7,8 @@ __pycache__
 .idea
 *.pyc
 .ipynb_checkpoints/
+release/
+*.zip
 
 # Temporary Files
 *~

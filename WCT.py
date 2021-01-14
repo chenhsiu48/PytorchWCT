@@ -8,7 +8,7 @@ import re
 import dip
 import torch.nn as nn
 
-def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, outf, transform_method, sal_map):
+def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, transform_method, sal_map):
     current_result = contentImg
     eIorigs = [f.cpu().squeeze(0) for f in wct.encoder(contentImg, targets)]
     eIss = [f.cpu().squeeze(0) for f in wct.encoder(styleImg, targets)]
@@ -24,11 +24,15 @@ def styleTransfer(wct, targets, contentImg, styleImg, imname, gamma, delta, outf
         CsIlast = wct.transform(eIlast, eIs, transform_method).float()
         CsIorig = wct.transform(eIorig, eIs, transform_method).float()
 
-        w = nn.functional.interpolate(sal_map, size=(CsIlast.shape[1], CsIlast.shape[2])).squeeze(0)
-        w = 0.2 * w / torch.max(w)
+        if sal_map is not None:
+            w = nn.functional.interpolate(sal_map, size=(CsIlast.shape[1], CsIlast.shape[2])).squeeze(0)
+            w = 0.2 * w / torch.max(w)
+            gP = gamma - w
+            dP = delta - w / 2
+        else:
+            gP = gamma
+            dP = delta
 
-        gP = gamma - w
-        dP = delta - w / 2
         decoder_input = (gP * (dP * CsIlast + (1 - dP) * CsIorig) + (1 - gP) * eIorig)
         decoder_input = decoder_input.unsqueeze(0).to(next(wct.parameters()).device)
 
@@ -60,7 +64,10 @@ def exec_transfer(args, sal_map):
             start_time = time.time()
             # WCT Style Transfer
             targets = [f'relu{t}_1' for t in args.targets]
-            styleTransfer(args.wct, targets, contentImg, styleImg, imname, args.gamma, args.delta, args.outf, args.transform_method, sal_map)
+            if args.no_saliency:
+                styleTransfer(args.wct, targets, contentImg, styleImg, imname, args.gamma, args.delta, args.transform_method, None)
+            else:
+                styleTransfer(args.wct, targets, contentImg, styleImg, imname, args.gamma, args.delta, args.transform_method, sal_map)
             end_time = time.time()
             print('Elapsed time is: %f' % (end_time - start_time))
             avgTime += (end_time - start_time)
@@ -130,6 +137,7 @@ if __name__ == '__main__':
     parser.add_argument('--gamma', type=float, default=0.9, help='hyperparameter to blend original content feature and colorized features. See Wynen et al. 2018 eq. (3)')
     parser.add_argument('--delta', type=float, default=0.95, help='hyperparameter to blend wct features from current input and original input. See Wynen et al. 2018 eq. (3)')
     parser.add_argument('--debug', action='store_true', help='debug mode')
+    parser.add_argument('--no_saliency', action='store_true', help='no saliency')
 
     args = parser.parse_args()
     args.encoder = 'models/vgg19_normalized.pth.tar'

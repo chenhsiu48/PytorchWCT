@@ -88,7 +88,10 @@ def oil_handler(args):
     im_org = Image.open(args.content)
     im_style = Image.open(args.style).resize(im_org.size)
 
-    im_sal_map = get_saliency_map(np.array(im_org), sigma=10, drop_pct=0)
+    if args.no_saliency:
+        im_sal_map = np.full((im_org.height, im_org.width), 0)
+    else:
+        im_sal_map = get_saliency_map(np.array(im_org), sigma=10, drop_pct=0)
 
     image = np.array(im_org)
     hsv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
@@ -123,7 +126,10 @@ def water_handler(args):
     im_org = Image.open(args.content)
     im_style = Image.open(args.style).resize(im_org.size)
 
-    im_sal_map = get_saliency_map(np.array(im_org), sigma=10, drop_pct=0)
+    if args.no_saliency:
+        im_sal_map = np.full((im_org.height, im_org.width), 0)
+    else:
+        im_sal_map = get_saliency_map(np.array(im_org), sigma=10, drop_pct=0)
 
     image = np.array(im_org)
     hsv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
@@ -157,7 +163,10 @@ def pencil_handler(args):
     im_org = Image.open(args.content)
     im_style = Image.open(args.style)
 
-    sal_map = get_saliency_map(np.array(im_org), sigma=20, drop_pct=0.1)
+    if args.no_saliency:
+        sal_map = np.full((im_org.height, im_org.width), 0)
+    else:
+        sal_map = get_saliency_map(np.array(im_org), sigma=20, drop_pct=0.1)
 
     im = im_org.convert('L').convert('RGB')
     im.save(pre_name)
@@ -177,7 +186,10 @@ def ink_handler(args):
     im_org = Image.open(args.content)
     im_style = Image.open(args.style)
 
-    sal_map = get_saliency_map(np.array(im_org), sigma=30, drop_pct=0.2)
+    if args.no_saliency:
+        sal_map = np.full((im_org.height, im_org.width), 0)
+    else:
+        sal_map = get_saliency_map(np.array(im_org), sigma=30, drop_pct=0.2)
 
     im_edit = im_org
 

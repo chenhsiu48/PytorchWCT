@@ -1,49 +1,48 @@
-## Universal Style Transfer
+# DIP2020 Group 12 Final Project
 
-This is a **modified** Pytorch implementation of [Universal Style Transfer via Feature Transforms](https://arxiv.org/pdf/1705.08086.pdf).
+Our final project adopts the WCT method from the paper [Universal Style Transfer via Feature Transforms](https://arxiv.org/pdf/1705.08086.pdf). The official Torch implementation can be found [here](https://github.com/Yijunmaverick/UniversalStyleTransfer) and Tensorflow implementation can be found [here](https://github.com/eridgd/WCT-TF).
+We extend [Daan Wynen](https://github.com/black-puppydog/PytorchWCT/blob/master/Readme.md)'s **modified** Pytorch implementation to build this final project to transfer various artistic styles on realistic photos. 
 
-**It makes some modifications:** 
-
-* Slightly improved parametrization introduced in [Unsupervised Learning of Artistic Styles with Archetypal Style Analysis](https://arxiv.org/abs/1805.11155)
-  to control the preservation of detail vs the strength of stylization.
-  This is most useful if you're modifying the style of an image that is *already* an artwork.
-  But may also be of interest to preserve detail in photos.
-  For the original parametrization, see [@sunshineatnoon's repository](https://github.com/sunshineatnoon/PytorchWCT) (or go back through the git log) until I manage to clean this up and have both neatly next to each other.
-* Improved feature transforms as described by Lu et al. in [A Closed-form Solution to Universal Style Transfer](https://arxiv.org/abs/1906.00668).
-  This specifically leads to better contour preservation.
-
-
-
-The official Torch implementation can be found [here](https://github.com/Yijunmaverick/UniversalStyleTransfer) and Tensorflow implementation can be found [here](https://github.com/eridgd/WCT-TF).
+- Presentation slide: ```doc/G12_Style_Transfer_Slide.pdf```
+- Final Report: ```doc/G12_Style_Transfer_Report.pdf```
 
 ## Prerequisites
-- [Pytorch](http://pytorch.org/)
-- [torchvision](https://github.com/pytorch/vision)
-- [scikit-image](https://scikit-image.org)
-- Pretrained encoder and decoder [models](http://pascal.inrialpes.fr/data2/archetypal_style/models_pytorch.zip) for image reconstruction only (download and uncompress them under models/)
-- CUDA + CuDNN
+- [Pytorch](http://pytorch.org/) 
+- [FFmpeg](https://ffmpeg.org/): to encode the images to video
 
-## Prepare images
-Simply put content and image pairs in `images/content` and `images/style` respectively. Note that correspoding conternt and image pairs should have same names.
+### Requirements
+```
+$ pip install -r requirements.txt
+```
 
+## Executation
 
-## Style Transfer
+To generate the style transferred images for ```woman.jpg```, ```lake.jpg```, and ```street.jpg```, simple execute: 
+```
+$ make image
+```
+
+The NTU video is dumped into raw PNG images under ```input/ntu/ntu%04d.png```. To generate the style transferred videos, simple execute: (it takes pretty long time)
+```
+$ make video
+```
+
+To apply different effects, invoking ```./WCT.py -h``` will list all the command line arguments to run our program. A simple way to transfer an image looks like: 
 
 ```
-python WCT.py --cuda
+$ ./WCT.py --content input/woman.jpg --style style/ink6.jpg
 ```
+
+or transfer a sequence of frames to be encoded as video: 
+
+```
+$ ./WCT.py --style style/oil1.jpg input/ntu/*.png --gamma 0.95 --delta 0.6 --no_saliency
+```
+
+Check the ```Makefile``` will give you more examples about how to execute this program. 
 
 ## Results
-<img src="images/content/in1.jpg" width="200" hspace="5"><img src="images/style/in1.jpg" width="200" hspace="5"><img src="images/content/in3.jpg" width="200" hspace="5"><img src="images/style/in3.jpg" width="200" hspace="5">
 
-<img src="samples/in1.jpg" width="400" hspace="10"><img src="samples/in3.jpg" width="400" hspace="10">
+### Images
 
-<img src="images/content/in2.jpg" width="200" hspace="5"><img src="images/style/in2.jpg" width="200" hspace="5"><img src="images/content/in4.jpg" width="200" hspace="5"><img src="images/style/in4.jpg" width="200" hspace="5">
-
-<img src="samples/in2.jpg" width="400" hspace="10"><img src="samples/in4.jpg" width="400" hspace="10">
-
-### Acknowledgments
-Many thanks to the author Yijun Li for his kind help.
-
-### Reference
-Li Y, Fang C, Yang J, et al. Universal Style Transfer via Feature Transforms[J]. arXiv preprint arXiv:1705.08086, 2017.
+### Video

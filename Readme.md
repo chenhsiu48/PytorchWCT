@@ -43,6 +43,16 @@ Check the ```Makefile``` will give you more examples about how to execute this p
 
 ## Results
 
-### Images
+### Woman
+![woman-oil](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/woman-oil6.png) ![woman-pencil](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/woman-pencil2.png)
+![woman-ink](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/woman-ink6.png) ![woman-water](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/woman-water.png)
 
-### Video
+### Lake
+![lake-oil](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/lake-oil5.png) ![lake-pencil](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/lake-pencil2.png) 
+![lake-ink](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/lake-ink6.png) ![lake-water](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/lake-water3.png) 
+
+### Street
+![street-oil](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/street-oil2.png) 
+![street-ink](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/street-ink4.png) 
+
+### NTU Video

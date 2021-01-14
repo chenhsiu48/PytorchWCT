@@ -24,9 +24,11 @@ video:
 	/usr/bin/ffmpeg -y -framerate 60 -i output/ntu%04d-ink6.png -c:v h264_nvenc -b:v 5000k -vf 'fps=60,format=yuv420p,tmix=frames=3:weights="1 2 1"' -aspect 16:9 output/ntu-ink6.mp4
 
 release:
-	mkdir -p release release/style release/input
+	mkdir -p release release/style release/input release/output
 	cp -r requirements.txt Makefile Readme.md *.py models doc release
 	cp style/*.jpg release/style; cp input/woman.jpg input/lake.jpg input/street.jpg release/input; cp -r input/video/frames release/input/ntu
+	cp samples/*.png release/output; cp samples/*.mp4 release/output
+	cd release; zip -r ../DIP2020-G12-Style-Transfer.zip *
 
 clean:
-	@rm -rf release
+	@rm -rf release *.zip

@@ -43,6 +43,8 @@ Check the ```Makefile``` will give you more examples about how to execute this p
 
 ## Results
 
+The generated images and videos will be placed in folder ```output/```. 
+
 ### Woman
 ![woman-oil](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/woman-oil6.png) ![woman-pencil](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/woman-pencil2.png)
 ![woman-ink](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/woman-ink6.png) ![woman-water](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/woman-water.png)
@@ -56,3 +58,8 @@ Check the ```Makefile``` will give you more examples about how to execute this p
 ![street-ink](https://github.com/chenhsiu48/PytorchWCT/raw/master/samples/street-ink4.png) 
 
 ### NTU Video
+
+- ```output/ntu-oil1.mp4```
+- ```output/ntu-pencil2.mp4```
+- ```output/ntu-ink6.mp4```
+- ```output/ntu-water2.mp4```
